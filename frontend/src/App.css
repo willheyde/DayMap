@@ -1,0 +1,273 @@
+/* ─── Google Fonts ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;800&display=swap');
+
+/* ─── Design Tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:        #0d0d0f;
+  --surface:   #141417;
+  --border:    #222228;
+  --muted:     #3a3a44;
+  --text:      #e8e8f0;
+  --subtext:   #6b6b7a;
+  --accent:    #c8f564;
+
+  --work:      #f5a623;
+  --school:    #4fc3f7;
+  --network:   #c8f564;
+  --hobby:     #ce93d8;
+  --errand:    #80cbc4;
+
+  --radius:    6px;
+  --font-mono: 'DM Mono', monospace;
+  --font-disp: 'Syne', sans-serif;
+}
+
+/* ─── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ─── App Shell ─────────────────────────────────────────────────── */
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ─── Header ────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+}
+
+.logo {
+  font-family: var(--font-disp);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.greeting {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--subtext);
+  font-style: italic;
+  letter-spacing: 0.03em;
+}
+
+.header-right {
+  text-align: right;
+}
+
+.time {
+  display: block;
+  font-family: var(--font-disp);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.date {
+  display: block;
+  font-size: 11px;
+  color: var(--subtext);
+  margin-top: 2px;
+}
+
+/* ─── Day Controls ──────────────────────────────────────────────── */
+.day-controls {
+  display: flex;
+  align-items: center;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
+}
+
+.btn-start {
+  background: var(--accent);
+  color: #0d0d0f;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+
+.btn-start:hover {
+  background: #d8ff74;
+  transform: translateY(-1px);
+}
+
+.btn-end {
+  background: transparent;
+  color: var(--subtext);
+  border-color: var(--muted);
+}
+
+.btn-end:hover {
+  border-color: #e57373;
+  color: #e57373;
+}
+
+.day-active-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.elapsed {
+  font-size: 12px;
+  color: var(--subtext);
+  font-style: italic;
+}
+
+/* ─── Progress Bar ──────────────────────────────────────────────── */
+.progress-wrap {
+  position: relative;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: visible;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.progress-label {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  font-size: 10px;
+  color: var(--subtext);
+  letter-spacing: 0.05em;
+}
+
+/* ─── Task List ─────────────────────────────────────────────────── */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── Task Card ─────────────────────────────────────────────────── */
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cat-color);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.task-card:hover {
+  border-color: var(--cat-color);
+  background: #18181c;
+  transform: translateX(2px);
+}
+
+.task-card.done {
+  opacity: 0.35;
+  border-left-color: var(--muted);
+}
+
+.task-card.done .task-title {
+  text-decoration: line-through;
+  color: var(--subtext);
+}
+
+.task-card.optional {
+  border-left-style: dashed;
+}
+
+.task-icon {
+  font-size: 16px;
+  color: var(--cat-color);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.task-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-title {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.task-meta {
+  font-size: 11px;
+  color: var(--subtext);
+  letter-spacing: 0.03em;
+}
+
+.task-check {
+  font-size: 11px;
+  color: var(--subtext);
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* ─── Footer / Legend ───────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
