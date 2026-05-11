@@ -1,7 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from Service import TaskService, ContactService, EmailService, WorkShiftService, DayLogService
-from backend.emailParser import run_email_sync
+from Service import TaskService, ContactService, EmailService, WorkShiftService, DayLogService, CalendarEventService
+from calendarSync import run_calendar_sync
+from emailParser import run_email_sync
+from planner import run_planner
+from datetime import date as date_, datetime
+from typing import Optional
+
 
 app = FastAPI()
 
@@ -17,6 +22,7 @@ contact_svc  = ContactService()
 email_svc    = EmailService()
 shift_svc    = WorkShiftService()
 daylog_svc   = DayLogService()
+event_svc   = CalendarEventService()
 
 
 # ─────────────────────────────────────────────
@@ -59,6 +65,10 @@ def delete_task(task_id: int):
     if not deleted:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"ok": True}
+@app.post("/api/plan/generate")
+def generate_plan():
+    tasks = run_planner()
+    return tasks
 
 
 # ─────────────────────────────────────────────
@@ -249,3 +259,81 @@ def delete_day_log(log_id: int):
     if not deleted:
         raise HTTPException(status_code=404, detail="Day log not found")
     return {"ok": True}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("controller:app", host="127.0.0.1", port=5000, reload=True)
+
+# ─────────────────────────────────────────────
+#  CALENDAR EVENTS
+#  Add these routes to Controller.py.
+#  Also add CalendarEventService to the imports from Service,
+#  and instantiate: event_svc = CalendarEventService()
+# ─────────────────────────────────────────────
+ 
+@app.get("/api/events")
+def get_events():
+    """All calendar events."""
+    return event_svc.get_all()
+ 
+@app.get("/api/events/today")
+def get_todays_events():
+    """
+    Events happening today — the planner calls this first to know what time
+    is already blocked before it schedules tasks.
+    Returns events ordered by start time.
+    """
+    return event_svc.get_today()
+ 
+@app.get("/api/events/range")
+def get_events_in_range(start: str, end: str):
+    """
+    Events between two ISO date strings (e.g. ?start=2025-06-01&end=2025-06-07).
+    Useful for a future weekly view or for the planner looking ahead.
+    """
+    return event_svc.get_range(start, end)
+ 
+@app.get("/api/events/{event_id}")
+def get_event(event_id: int):
+    event = event_svc.get_by_id(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+ 
+@app.post("/api/events", status_code=201)
+def create_event(event: dict):
+    """Manually add a calendar event."""
+    new_id = event_svc.create(event)
+    return {"id": new_id}
+ 
+@app.patch("/api/events/{event_id}")
+def update_event(event_id: int, fields: dict):
+    updated = event_svc.update(event_id, fields)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"ok": True}
+ 
+@app.delete("/api/events/{event_id}")
+def delete_event(event_id: int):
+    deleted = event_svc.delete(event_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"ok": True}
+ 
+@app.post("/api/events/import/ical")
+def import_ical(body: dict):
+    """
+    Accept a raw .ics string in body["ical_text"] and parse it into CalendarEvents.
+    Deduplicates on ical_uid so re-importing the same file is safe.
+    Returns a count of new events inserted.
+    """
+    count = event_svc.import_ical(body.get("ical_text", ""))
+    return {"imported": count}
+@app.post("/api/events/sync")
+def sync_calendar():
+    """
+    Fetches all ICAL_FEED_* URLs from .env and syncs new events into the DB.
+    Safe to call repeatedly — deduplicates on ical_uid.
+    Triggered automatically by the nightly scheduler, or manually from the frontend.
+    """
+    summary = run_calendar_sync()
+    return summary
