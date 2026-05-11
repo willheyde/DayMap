@@ -36,7 +36,7 @@ ACCOUNTS = [
 ]
 
 # How many of the most recent emails to fetch per account per run
-FETCH_LIMIT = 5
+FETCH_LIMIT = 20
 
 
 # ─────────────────────────────────────────────

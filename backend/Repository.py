@@ -95,12 +95,13 @@ class TaskRepository:
         cursor.execute("""
             INSERT INTO tasks
                 (title, category, status, duration_minutes, priority, is_optional,
-                 rolled_over_count, due_date, source, created_date,
-                 linked_contact_id, linked_event_id, notes)
+                rolled_over_count, due_date, source, created_date,
+                linked_contact_id, linked_event_id, notes)
             VALUES
                 (%(title)s, %(category)s, %(status)s, %(duration_minutes)s, %(priority)s,
-                 %(is_optional)s, %(rolled_over_count)s, %(due_date)s, %(source)s,
-                 %(created_date)s, %(linked_contact_id)s, %(linked_event_id)s, %(notes)s)
+                %(is_optional)s, %(rolled_over_count)s, %(due_date)s, %(source)s,
+                %(created_date)s, %(linked_contact_id)s, %(linked_event_id)s, %(notes)s)
+            RETURNING id
         """, task)
         conn.commit()
         new_id = cursor.fetchone()[0]
@@ -166,10 +167,14 @@ class ContactRepository:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO contacts
-                (name, company, role, status, email, linkedin_url, phone, source, notes, tags)
+                (title, category, status, duration_minutes, priority, is_optional,
+                rolled_over_count, due_date, source, created_date,
+                linked_contact_id, linked_event_id, notes)
             VALUES
-                (%(name)s, %(company)s, %(role)s, %(status)s, %(email)s,
-                 %(linkedin_url)s, %(phone)s, %(source)s, %(notes)s, %(tags)s)
+                (%(title)s, %(category)s, %(status)s, %(duration_minutes)s, %(priority)s,
+                %(is_optional)s, %(rolled_over_count)s, %(due_date)s, %(source)s,
+                %(created_date)s, %(linked_contact_id)s, %(linked_event_id)s, %(notes)s)
+            RETURNING id
         """, contact)
         conn.commit()
         new_id = cursor.fetchone()[0]
