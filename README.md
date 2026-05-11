@@ -1,5 +1,4 @@
 # DayMap
-# DayMap
 ### A personal daily planning agent built for real life
 
 > Built by William Heyde — Summer 2025
@@ -8,9 +7,9 @@
 
 ## What Is This?
 
-DayMap is a personal day-planning agent that wakes up before you do. Every morning, you open your computer, click **Start My Day**, and get a realistic, prioritized task list built from your actual life — your work schedule, your networking goals, your energy, and what you didn't finish yesterday.
+DayMap is a personal day-planning agent that wakes up before you do. Every morning, you open your computer, click **Start My Day**, and get a realistic, prioritized task list built from your actual life — your work schedule, your networking goals, your flagged emails, and what you didn't finish yesterday.
 
-No subscriptions. No cloud. Runs on your machine.
+No subscriptions. No cloud. Runs entirely on your machine.
 
 ---
 
@@ -18,20 +17,22 @@ No subscriptions. No cloud. Runs on your machine.
 
 Most productivity apps ask you to manually input everything. DayMap inverts that. It pulls from your real data sources and generates your day for you. The goal isn't perfect optimization — it's showing up consistently, making progress on your internship search, and not burning out while working part-time.
 
-The day starts when **you** say it does. DayMap plans around your actual schedule, not a fantasy 6am morning routine.
+The day starts when **you** say it does. DayMap plans around your actual schedule, not a fantasy 6am morning routine. Some days are a slog — work, meeting, reach out, work on a project. Some days are simple. The app reflects that without judgment.
+
+**The 85% principle:** not all tasks are equal. A day where you crushed two hard deadlines but skipped the gym is a good day. DayMap is designed around that reality.
 
 ---
 
-## Stack
+## Current Stack
 
-| Layer | Technology | Why |
+| Layer | Technology | Notes |
 |---|---|---|
-| Frontend | JavaScript (Vanilla or React) | Displays the daily view, handles button interactions |
-| Backend | Python (Flask or FastAPI) | Orchestrates logic, handles data sources |
-| Database | MySQL | Stores tasks, contacts, completion history |
-| AI / Planning | Ollama (local LLM — llama3 or mistral) | Runs entirely on your machine, zero cost, zero data leaving |
-| Scheduler | Linux cron job | Regenerates the plan nightly between 3–5am |
-| Email Parsing | Python IMAP (imaplib) | Reads Gmail/other accounts locally |
+| Frontend | React | Live clock, animated task cards, category drawer |
+| Backend | Python + FastAPI + Uvicorn | REST API, runs on port 5000 |
+| Database | PostgreSQL (pgAdmin4) | Local instance on port 8878 |
+| AI / Planning | Ollama + llama3 | Runs fully local, zero API cost |
+| Email Parsing | Python imaplib | Gmail via App Password, Outlook TBD |
+| Scheduler | cron (planned) | Nightly 3–5am regen |
 
 ---
 
@@ -40,151 +41,193 @@ The day starts when **you** say it does. DayMap plans around your actual schedul
 ### The Daily Loop
 
 ```
-[3-5am cron job runs]
+[Nightly cron job OR manual trigger]
         ↓
-Backend pulls: work schedule + email + contacts list + yesterday's completion data
+email_parser.py scans Gmail for flagged emails (reply needed, follow-up, meeting)
         ↓
-Local LLM generates prioritized task list for the day
+planner.py builds context: shift + flagged emails + contacts to reach + rolled tasks
         ↓
-Frontend displays the list — user clicks "Start My Day" when ready
+Local llama3 generates a prioritized task list (3–8 tasks, respects work hours)
         ↓
-User works through the day
+Tasks saved to PostgreSQL
         ↓
-User clicks "End My Day"
+User opens app → clicks "Start My Day" → DayLog created with timestamp
         ↓
-Backend marks completions, carries over incomplete tasks, updates contact log
+User works through the day, clicking tasks to complete them
+        ↓
+User clicks "End My Day" → rollover logic runs:
+  - Incomplete non-optional tasks → status=rolled, rolled_over_count++
+  - Optional tasks past threshold (5 days) → status=dropped
         ↓
 [repeat]
 ```
 
-### Wake/Sleep Window
-When you click **Start My Day**, DayMap logs the timestamp. When you click **End My Day**, it logs that too. Over time it learns your actual active window and uses that to space tasks realistically throughout the day.
-
 ---
 
-## Features
-
-### Core (Build These First)
-- **Daily task list** — generated every morning, displayed cleanly on load
-- **Start / End Day buttons** — the only required user input
-- **Task rollover** — incomplete tasks carry forward automatically
-- **Contact deduplication** — a local log of every person contacted with timestamps, so you never accidentally double-message someone
-- **Work schedule awareness** — blocks off work hours so tasks don't conflict
-
-### Planned
-- **Delinquency detection** — optional tasks (gym, hobby, side project) that haven't been touched in N days get quietly dropped, not nagged about
-- **Email parsing** — scans both email accounts for relevant signals (replies, follow-ups needed, calendar invites)
-- **Adaptive time allocation** — learns from your actual completion patterns over time to estimate how long things really take you
-
-### Stretch Goals (If Time Allows)
-- **Lock-in mode** — distraction blocking during focused work blocks
-- **Weekly review summary** — a Friday EOD snapshot of networking progress, tasks completed, goals hit
-
----
-
-## Data & Privacy
-
-Everything runs locally. The LLM runs via Ollama on your machine. The database is a local MySQL instance. No data is sent to any external API unless you explicitly choose to connect one.
-
-Credentials (email passwords, etc.) are stored in a local `.env` file that is **never committed to version control**.
-
-```
-# .env — never commit this
-EMAIL_1_USER=you@gmail.com
-EMAIL_1_PASS=your_app_password
-EMAIL_2_USER=you@other.com
-EMAIL_2_PASS=your_app_password
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=localpassword
-```
-
----
-
-## Database Schema (Draft)
-
-```sql
--- The task list
-tasks (
-  id, title, category, estimated_minutes,
-  priority, is_optional, status,
-  created_date, completed_date, rolled_over_count
-)
-
--- Everyone you've reached out to or plan to
-contacts (
-  id, name, platform, last_contacted_date,
-  status, notes
-)
-
--- Your active window history
-day_log (
-  id, start_time, end_time, date
-)
-```
-
----
-
-## Project Structure (Planned)
+## Project Structure
 
 ```
 daymap/
 ├── frontend/
-│   ├── index.html
-│   ├── app.js
-│   └── style.css
+│   └── src/
+│       ├── App.js           # Full React app — clock, task list, drawer, controls
+│       └── App.css          # Dark theme, animations, category colors
 ├── backend/
-│   ├── main.py              # Flask/FastAPI entry point
-│   ├── scheduler.py         # Cron-triggered nightly regen
-│   ├── planner.py           # LLM prompt logic
-│   ├── email_parser.py      # IMAP email reading
-│   ├── task_manager.py      # Rollover, delinquency, completion logic
-│   └── contact_tracker.py  # Contact log + deduplication
+│   ├── Controller.py        # FastAPI routes for all endpoints
+│   ├── Service.py           # Business logic — rollover, dedup, delinquency
+│   ├── Repository.py        # Raw PostgreSQL queries (psycopg2 + RealDictCursor)
+│   ├── Models.py            # Pydantic models for all objects
+│   ├── emailParser.py       # IMAP email fetching, parsing, action flagging
+│   ├── planner.py           # LLM context builder + Ollama call + fallback
+│   └── scheduler.py         # (planned) cron-triggered nightly run
 ├── db/
-│   └── schema.sql
+│   └── schema.sql           # Full PostgreSQL schema — run once in pgAdmin4
 ├── .env                     # Never committed
-├── .env.example             # Committed — shows required keys
+├── .env.example
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Build Order
+## Database Schema
 
-This is the order to build in — each phase is independently useful before moving to the next.
+```
+tasks                — daily task list with rollover and delinquency tracking
+contacts             — networking targets with status and interaction history
+contact_interactions — one row per outreach / reply / meeting
+emails               — parsed inbox items with action flags and contact linkage
+work_shifts          — blocks off work hours so planner doesn't schedule over them
+day_logs             — tracks start/end timestamps and EOD completion summary
+```
 
-**Phase 1 — The Shell**
-Get the frontend displaying a hardcoded task list. Build the Start/End Day buttons. Set up MySQL and the schema. Get Flask talking to the database.
-
-**Phase 2 — The Brain**
-Integrate Ollama locally. Feed it a manually-written JSON of your week and get it to return a reasonable task list. This is the proof of concept.
-
-**Phase 3 — Real Data**
-Hook up the work schedule (manual import or calendar sync). Build the contact tracker and rollover logic. Now the output is driven by real inputs.
-
-**Phase 4 — Email**
-IMAP parsing for both accounts. Focus on: do I need to follow up with anyone? Did someone reply to me? Is there a shift change?
-
-**Phase 5 — Polish**
-Delinquency detection, adaptive scheduling, UI cleanup, lock-in mode if you have time.
+Key design decisions:
+- `rolled_over_count` on tasks drives delinquency detection — optional tasks dropped after 5 rolls
+- Unique constraint on emails `(account, sender_address, received_at)` prevents duplicate imports
+- `TEXT[]` on contacts tags enables `WHERE 'fintech' = ANY(tags)` queries later
+- Foreign keys use `ON DELETE SET NULL` so deleting a contact doesn't cascade-delete tasks
 
 ---
 
-## Known Hard Problems
+## API Endpoints
 
-- **LinkedIn scraping** — LinkedIn actively blocks automated access. The workaround is maintaining your own contact list manually (export from LinkedIn once, keep it as a local JSON/DB table). DayMap helps you decide *who to contact today*, not find new people.
-- **Work schedule parsing** — depends entirely on your employer's portal. Start with manual data entry, automate later if the portal exposes anything accessible.
-- **Email noise** — most email is junk. The parser will need a filtering layer before it's useful signal.
+```
+GET    /api/tasks                   — all active tasks
+POST   /api/tasks                   — create task (from drawer)
+PATCH  /api/tasks/{id}/complete     — mark done
+DELETE /api/tasks/{id}
+
+GET    /api/contacts
+POST   /api/contacts
+POST   /api/contacts/{id}/interact  — log an outreach interaction
+GET    /api/contacts/targets        — contacts ready to reach out to today
+
+GET    /api/emails
+GET    /api/emails/unactioned       — emails flagged as needing action
+POST   /api/emails/sync             — triggers email_parser.run_email_sync()
+
+POST   /api/daylog/start            — called by "Start My Day" button
+POST   /api/daylog/{id}/end         — called by "End My Day", runs rollover
+GET    /api/daylog/today
+
+POST   /api/plan/generate           — triggers planner.run_planner()
+```
 
 ---
 
-## Goals This Summer
+## Frontend Features (Current)
 
-1. Land a software engineering internship
-2. Network consistently without burning out
-3. Build something real and ship it
+- **Live clock** — ticks every second, colon blinks, seconds visible
+- **Greeting** — changes based on time of day AND task completion progress
+- **Task cards** — stagger in with animation, colored by category, click to complete
+- **Progress bar** — glowing accent line, updates live as tasks are completed
+- **Day state persistence** — page refresh mid-day restores active day log
+- **Add task drawer** — two-step: pick category → enter name, duration, optional flag
+- **Optimistic updates** — task flips instantly on click, syncs in background
+
+### Task Categories
+| Category | Use |
+|---|---|
+| Work | Shifts, work-related tasks |
+| School | Classes, assignments, professor emails |
+| Network | Reach outs, coffee chats, follow-ups |
+| Hobby | Gym, side projects, optional activities |
+| Errand | Grocery runs, appointments, admin |
 
 ---
 
-*This README will be updated as the project evolves.*
+## Environment Variables
+
+```bash
+# .env — never commit this file
+DB_HOST=127.0.0.1
+DB_PORT=8878
+DB_USER=postgres
+DB_PASS=yourpassword
+DB_NAME=daymap
+
+EMAIL1=you@ncsu.edu
+EMAIL1PW=your_google_app_password   # 16-char App Password, not your real password
+EMAIL2=you@outlook.com
+EMAIL2PW=your_app_password
+
+# Outlook note: Microsoft removed basic IMAP auth in 2024 — OAuth integration pending
+```
+
+---
+
+## Known Issues & Decisions
+
+- **Outlook IMAP** — Microsoft removed basic IMAP auth in 2024. OAuth integration is the fix, tabled for a future phase.
+- **llama3 speed** — on CPU, Ollama responses take 2–5 minutes for a full planning prompt. GPU acceleration dramatically improves this. Timeout is set to 300s. Uses httpx (not requests) to avoid connection issues on Windows.
+- **Hallucinated contacts** — if the contacts table is empty, the planner will invent placeholder people. Seed real contacts first.
+- **JSON fencing** — local LLMs sometimes wrap responses in markdown fences despite instructions. The parser strips these before JSON.parse.
+- **Port** — PostgreSQL is on 8878 (not the default 5432). The `DB_PORT` env var handles this.
+- **psycopg2 cursors** — use `RealDictCursor` from `psycopg2.extras`, not `dictionary=True` (that's a MySQL-ism).
+
+---
+
+## Next Steps (Planned)
+
+### Near term
+- Add `due_date` and `source` fields to the tasks table — one migration, makes the planner significantly smarter
+- **iCal import** — parse `.ics` exports from Google Calendar and Canvas into a `calendar_events` table so the planner knows what's blocking your day before scheduling anything
+
+### Medium term
+- **Weighted task scoring** — priority 1 tasks worth more points toward the 85% threshold so completing hard things counts more than skipping the gym
+- **Background sync** — poll email + calendar every 30 minutes while the app is open, surface new urgent items automatically as new cards
+- **Rewrite planner prompt** with calendar context — output should reflect your real blocked schedule, not just pending tasks
+
+### Later
+- **Google Calendar OAuth** — live event sync instead of manual iCal export
+- **Outlook OAuth** — replace the broken IMAP approach
+- **Weekly review** — Friday EOD snapshot of networking progress and tasks completed
+- **Lock-in mode** — distraction blocking during focused work blocks
+
+---
+
+## Running Locally
+
+```bash
+# Backend
+cd backend
+pip install fastapi uvicorn psycopg2-binary python-dotenv httpx
+uvicorn Controller:app --reload --port 5000
+
+# Frontend
+cd frontend
+npm install
+npm start
+
+# Trigger a plan manually
+python -c "from planner import run_planner; run_planner()"
+
+# Trigger email sync manually
+python -c "from emailParser import run_email_sync; run_email_sync()"
+
+# Ollama must be running separately
+ollama serve
+
+---
+
+*Last updated: May 2026*
