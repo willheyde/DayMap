@@ -166,16 +166,13 @@ class ContactRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO contacts
-                (title, category, status, duration_minutes, priority, is_optional,
-                rolled_over_count, due_date, source, created_date,
-                linked_contact_id, linked_event_id, notes)
-            VALUES
-                (%(title)s, %(category)s, %(status)s, %(duration_minutes)s, %(priority)s,
-                %(is_optional)s, %(rolled_over_count)s, %(due_date)s, %(source)s,
-                %(created_date)s, %(linked_contact_id)s, %(linked_event_id)s, %(notes)s)
-            RETURNING id
-        """, contact)
+        INSERT INTO contacts
+            (name, company, role, status, email, linkedin_url, phone, source, notes, tags)
+        VALUES
+            (%(name)s, %(company)s, %(role)s, %(status)s, %(email)s,
+             %(linkedin_url)s, %(phone)s, %(source)s, %(notes)s, %(tags)s::text[])
+        RETURNING id
+    """, {**contact, "tags": "{}"})  
         conn.commit()
         new_id = cursor.fetchone()[0]
         conn.close()

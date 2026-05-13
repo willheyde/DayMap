@@ -102,6 +102,11 @@ class ContactService:
 
     def create(self, contact: dict) -> int:
         contact.setdefault("status", ContactStatus.target)
+        contact.setdefault("role",         None)
+        contact.setdefault("phone",        None)
+        contact.setdefault("source",       None)
+        contact.setdefault("notes",        None)
+        contact.setdefault("tags",         [])    # ← DB probably expects an array
         return contact_repo.create(contact)
 
     def update(self, contact_id: int, fields: dict) -> bool:
