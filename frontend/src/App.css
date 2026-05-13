@@ -644,7 +644,44 @@ body {
   flex-direction: column;
   gap: 0.3rem;
 }
-
+.contact-card.contact-dim {
+  opacity: 0.45;
+}
+.contact-status {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-top: 0.1rem;
+}
+.contact-done-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+ 
+.contact-done-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+ 
+/* ─── Show more button ───────────────────────────────────────────── */
+ 
+.show-more-btn {
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  text-align: center;
+  opacity: 0.5;
+}
+ 
+.show-more-btn:hover {
+  opacity: 1;
+}
 .contact-card {
   display: flex;
   align-items: center;
@@ -692,4 +729,10 @@ body {
 
 .contact-link:hover {
   opacity: 1;
+}
+.reach-out-strip {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }

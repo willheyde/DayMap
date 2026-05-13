@@ -320,13 +320,45 @@ function AddTaskDrawer({ onAdd, onClose }) {
     </div>
   );
 }
-function ContactCard({ contact }) {
+const STATUS_LABELS = {
+  target:         { label: "not contacted", dim: false  },
+  reached_out:    { label: "reached out",   dim: true   },
+  waiting:        { label: "waiting",       dim: true   },
+  replied:        { label: "replied",       dim: true   },
+  met:            { label: "met",           dim: true   },
+  not_interested: { label: "not interested",dim: true   },
+};
+function ContactCard({ contact, showStatus = false, onInteract = null }) {
+  const [marking, setMarking] = useState(false);
+  const status = STATUS_LABELS[contact.status] ?? STATUS_LABELS.target;
+ 
+  async function handleInteract(e) {
+    e.stopPropagation();
+    if (marking) return;
+    setMarking(true);
+    try {
+      await fetch(`${API}/api/contacts/${contact.id}/interact`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ method: "unknown" }),
+      });
+      onInteract?.(contact.id);
+    } catch (err) {
+      console.error("Failed to log interaction:", err);
+    } finally {
+      setMarking(false);
+    }
+  }
+ 
   return (
-    <div className="contact-card">
+    <div className={`contact-card ${status.dim ? "contact-dim" : ""}`}>
       <div className="contact-body">
         <span className="contact-name">{contact.name}</span>
         {contact.company && (
           <span className="contact-company">{contact.company}</span>
+        )}
+        {showStatus && (
+          <span className="contact-status">{status.label}</span>
         )}
       </div>
       <div className="contact-links">
@@ -350,26 +382,42 @@ function ContactCard({ contact }) {
             @
           </a>
         )}
+        {/* Only show "done" button on target contacts */}
+        {onInteract && contact.status === "target" && (
+          <button
+            className="contact-link contact-done-btn"
+            onClick={handleInteract}
+            disabled={marking}
+          >
+            {marking ? "…" : "✓"}
+          </button>
+        )}
       </div>
     </div>
   );
 }
  
  
-// ─── 1B. ContactsSection ─────────────────────────────────────────────
+// ─── ContactsSection ─────────────────────────────────────────────────
  
-function ContactsSection({ contacts, onAdd }) {
-  const [open, setOpen]       = useState(false);
-  const [name, setName]       = useState("");
-  const [company, setCompany] = useState("");
-  const [linkedin, setLinkedin] = useState("");
-  const [email, setEmail]     = useState("");
-  const [saving, setSaving]   = useState(false);
+function ContactsSection({ contacts, onAdd, onInteract }) {
+  const [open, setOpen]           = useState(false);
+  const [showAll, setShowAll]     = useState(false);
+  const [name, setName]           = useState("");
+  const [company, setCompany]     = useState("");
+  const [linkedin, setLinkedin]   = useState("");
+  const [email, setEmail]         = useState("");
+  const [saving, setSaving]       = useState(false);
   const nameRef = useRef(null);
  
   useEffect(() => {
     if (open) nameRef.current?.focus();
   }, [open]);
+ 
+  // Split into daily targets vs the rest
+  const targets    = contacts.filter(c => c.status === "target").slice(0, 3);
+  const pipeline   = contacts.filter(c => c.status !== "target");
+  const hasTargets = targets.length > 0;
  
   async function handleAdd() {
     if (!name.trim() || saving) return;
@@ -387,9 +435,15 @@ function ContactsSection({ contacts, onAdd }) {
         }),
       });
       const data = await res.json();
-      onAdd({ id: data.id, name: name.trim(), company: company.trim() || null, linkedin_url: linkedin.trim() || null, email: email.trim() || null, status: "target" });
+      onAdd({
+        id:           data.id,
+        name:         name.trim(),
+        company:      company.trim() || null,
+        linkedin_url: linkedin.trim() || null,
+        email:        email.trim() || null,
+        status:       "target",
+      });
       setName(""); setCompany(""); setLinkedin(""); setEmail("");
-      setOpen(false);
     } catch (e) {
       console.error("Failed to create contact:", e);
     } finally {
@@ -404,6 +458,26 @@ function ContactsSection({ contacts, onAdd }) {
  
   return (
     <div className="contacts-section">
+ 
+      {/* ── Daily reach-out targets — always visible ───────────────── */}
+      {hasTargets && (
+        <div className="reach-out-strip">
+          <span className="event-strip-label">
+            reach out today · {targets.length} of 3
+          </span>
+          <div className="contact-list">
+            {targets.map(c => (
+              <ContactCard
+                key={c.id}
+                contact={c}
+                onInteract={onInteract}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+ 
+      {/* ── Full contacts panel — collapsible ─────────────────────── */}
       <div className="contacts-header" onClick={() => setOpen(v => !v)}>
         <span className="contacts-title">
           contacts
@@ -416,6 +490,7 @@ function ContactsSection({ contacts, onAdd }) {
  
       {open && (
         <div className="contacts-body">
+ 
           {/* Add form */}
           <div className="contact-form">
             <input
@@ -463,13 +538,28 @@ function ContactsSection({ contacts, onAdd }) {
             </div>
           </div>
  
-          {/* Contact list */}
+          {/* Full list */}
           {contacts.length > 0 && (
-            <div className="contact-list">
-              {contacts.map(c => (
-                <ContactCard key={c.id} contact={c} />
-              ))}
-            </div>
+            <>
+              <div className="contact-list">
+                {(showAll ? contacts : contacts.slice(0, 8)).map(c => (
+                  <ContactCard
+                    key={c.id}
+                    contact={c}
+                    showStatus
+                    onInteract={c.status === "target" ? onInteract : null}
+                  />
+                ))}
+              </div>
+              {contacts.length > 8 && (
+                <button
+                  className="btn btn-ghost show-more-btn"
+                  onClick={() => setShowAll(v => !v)}
+                >
+                  {showAll ? "show less" : `show all ${contacts.length}`}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -595,9 +685,15 @@ export default function App() {
     }]);
   }
   function handleContactAdded(contact) {
-    setContacts(prev => [contact, ...prev]);
+     setContacts(prev => [contact, ...prev]);
   }
-
+  function handleContactInteracted(contactId) {
+    setContacts(prev =>
+      prev.map(c =>
+        c.id === contactId ? { ...c, status: "reached_out" } : c
+      )
+    );
+  }
   return (
     <div className="app">
       <header className="header">
@@ -647,7 +743,7 @@ export default function App() {
           ))
         )}
       </main>
-       <ContactsSection contacts={contacts} onAdd={handleContactAdded} />
+       <ContactsSection contacts={contacts} onAdd={handleContactAdded} onInteract={handleContactInteracted} />
       <footer className="footer">
         <div className="legend">
           {Object.entries(CATEGORIES).map(([key, cat]) => (
