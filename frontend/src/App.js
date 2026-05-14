@@ -577,8 +577,46 @@ export default function App() {
   const [now, setNow]               = useState(new Date());
   const [showDrawer, setShowDrawer] = useState(false);
   const [contacts, setContacts] = useState([]); 
+  const [replanMsg,  setReplanMsg]  = useState(null);
+  const [replanning, setReplanning] = useState(false);
+  
+  async function handleReplan() {
+    if (replanning) return;
+    setReplanning(true);
+    setReplanMsg("syncing...");
+    try {
+      // Step 1: sync calendar + email so planner has fresh data
+      await Promise.all([
+        fetch(`${API}/api/events/sync`,  { method: "POST" }),
+        fetch(`${API}/api/emails/sync`,  { method: "POST" }),
+      ]);
 
-  useEffect(() => {
+      setReplanMsg("planning...");
+
+      // Step 2: run the planner
+      await fetch(`${API}/api/plan/generate`, { method: "POST" });
+
+      // Step 3: refresh the task list
+      const res  = await fetch(`${API}/api/tasks`);
+      const data = await res.json();
+      setTasks(data.map(t => ({
+        ...t,
+        done:     t.status === "complete",
+        optional: t.is_optional,
+        duration: t.duration_minutes,
+      })));
+
+      setReplanMsg("done");
+      setTimeout(() => setReplanMsg(null), 2000);
+    } catch (e) {
+      console.error("Replan failed:", e);
+      setReplanMsg("failed");
+      setTimeout(() => setReplanMsg(null), 3000);
+    } finally {
+      setReplanning(false);
+    }
+  }
+  useEffect(() => { 
     const tick = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(tick);
   }, []);
@@ -705,20 +743,30 @@ export default function App() {
       </header>
 
       <div className="day-controls">
-        <div className="day-controls-left">
-          {!dayActive ? (
-            <button className="btn btn-start" onClick={handleStartDay}>start my day</button>
-          ) : (
-            <div className="day-active-row">
-              <span className="elapsed">{Math.floor(elapsed / 60)}h {elapsed % 60}m in</span>
-              <button className="btn btn-end" onClick={handleEndDay}>end my day</button>
-            </div>
-          )}
+      <div className="day-controls-left">
+        {!dayActive ? (
+        <button className="btn btn-start" onClick={handleStartDay}>start my day</button>
+      ) : (
+        <div className="day-active-row">
+          <span className="elapsed">{Math.floor(elapsed / 60)}h {elapsed % 60}m in</span>
+          <button className="btn btn-end" onClick={handleEndDay}>end my day</button>
         </div>
+      )}
+      </div>
+      <div className="day-controls-right">
+        <button
+          className={`btn btn-ghost btn-replan ${replanning ? "replanning" : ""}`}
+          onClick={handleReplan}
+          disabled={replanning}
+          title="sync + replan your day"
+        >
+          {replanMsg ?? "↺ replan"}
+        </button>
         <button className="btn btn-ghost btn-plus" onClick={() => setShowDrawer(v => !v)}>
           {showDrawer ? "✕" : "+ task"}
         </button>
       </div>
+    </div>
 
       {showDrawer && (
         <AddTaskDrawer

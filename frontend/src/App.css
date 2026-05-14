@@ -736,3 +736,21 @@ body {
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.day-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-replan {
+  font-variant-numeric: tabular-nums;
+  min-width: 5.5rem;
+  text-align: center;
+  transition: opacity 0.2s;
+}
+
+.btn-replan.replanning {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
