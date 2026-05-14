@@ -326,14 +326,26 @@ Fields:
 def _call_llm(prompt: str) -> list[dict] | None:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            with httpx.Client(timeout=300) as client:
+            with httpx.Client(timeout=1000) as client:
+                
+                print("[planner] ── PROMPT ──────────────────────────")
+                print(prompt)
+                print("[planner] ── END PROMPT ────────────────────────")
+                # ───────────────────────────────────────────────────
+                
                 response = client.post(OLLAMA_URL, json={
                     "model":  OLLAMA_MODEL,
                     "prompt": prompt,
                     "stream": False,
                 })
+
             response.raise_for_status()
             raw = response.json().get("response", "").strip()
+
+            # ── DEBUG ──────────────────────────────────────────
+            print("[planner] ── RAW RESPONSE ────────────────────")
+            print(raw)
+            print("[planner] ── END RESPONSE ──────────────────────")
 
             if raw.startswith("```"):
                 raw = raw.split("```")[1]
